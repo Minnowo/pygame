@@ -6,6 +6,7 @@ from typing import Sequence
 from . import GameAssets as GA
 from . import GameConstants as GC
 from . import GameMath
+from . import GameParticles
 
 
 class Entity:
@@ -20,10 +21,13 @@ class Entity:
         hitbox_width: int = 50,
         hitbox_height: int = 50,
         team: int = 0,
+        damage: int = 0,
+        hp: int = 100,
     ) -> None:
 
         self.name: str = name
 
+        self.alive_at = pygame.time.get_ticks()
         self.sprites: dict[str] = sprite_sheet
         self.sprite: pygame.Surface = sprite_sheet[GC.MOTION_NONE]
         self.sprite_rect: pygame.Rect = self.sprite.get_rect()
@@ -34,8 +38,8 @@ class Entity:
         self.y: float = y
         self.x_speed: float = x_speed
         self.y_speed: float = y_speed
-        self.hp = 100
-        self.damage = 0
+        self.hp = hp
+        self.damage = damage
         self.motion: int = 0
         self.is_dead: bool = False
         self.dynamic_hitbox: bool = False
@@ -51,11 +55,11 @@ class Entity:
         self.update()
 
     @staticmethod
-    def entity_is_dead(entity: 'Entity'):
+    def entity_is_dead(entity: "Entity"):
         return entity.is_dead
 
     @staticmethod
-    def entity_is_not_dead(entity: 'Entity'):
+    def entity_is_not_dead(entity: "Entity"):
         return not entity.is_dead
 
     def set_team(self, team: int):
@@ -77,25 +81,29 @@ class Entity:
 
     def collides_with(self, entity: "Entity"):
 
-        return not self.is_dead and self.hitbox.colliderect(entity.hitbox)
+        return not self.is_dead and not entity.is_dead and self.hitbox.colliderect(entity.hitbox)
 
     def kill(self):
         self.is_dead = True
 
+    def is_on_damage_cooldown(self):
+
+        return self.last_damage_time + self.damage_i_frames > pygame.time.get_ticks()
+
     def take_damage_no_i_frames(self, damage: int):
-        """ returns a bool indicating if the entity is dead """
+        """returns a bool indicating if the entity is dead"""
 
         self.hp -= damage
 
         if self.hp <= 0:
             self.kill()
 
-        return self.is_dead 
+        return self.is_dead
 
     def take_damage_and_died(self, damage: int):
-        """ returns a bool indicating if the entity is dead """
-        
-        if self.last_damage_time + self.damage_i_frames > pygame.time.get_ticks():
+        """returns a bool indicating if the entity is dead"""
+
+        if damage == 0 or self.last_damage_time + self.damage_i_frames > pygame.time.get_ticks():
             return self.is_dead
 
         self.hp -= damage
@@ -105,12 +113,11 @@ class Entity:
         if self.hp <= 0:
             self.kill()
 
-        return self.is_dead 
+        return self.is_dead
 
     def perform_task(self):
         pass
 
-    
     def get_entity_damage(self):
         return self.damage
 
@@ -145,7 +152,7 @@ class Entity:
 
         if self.last_damage_time + self.damage_i_frames > pygame.time.get_ticks():
             color = GameMath.invert_color(self.team_color)
-                
+
         else:
             color = self.team_color
 
@@ -201,25 +208,23 @@ class Entity:
         # update the y motion bits
         self.motion = (self.motion & GC.X_MOTION_MASK) | y_motion
 
-    def move_direction_of_x(self, x:int):
+    def move_direction_of_x(self, x: int):
 
         self.move_x(self.x_speed * x)
 
-    def move_direction_of_y(self, y:int):
+    def move_direction_of_y(self, y: int):
 
         self.move_y(self.y_speed * y)
 
     def move_towards(self, x: int, y: int):
-        
+
         # # using vectors
         # x_dir, y_dir = GameMath.get_normalized_vector(self.x, self.y, x, y)
 
         # self.move_direction_of_x(x_dir)
         # self.move_direction_of_y(y_dir)
-        
-        x_change, y_change = GameMath.move_towards(
-            x, y, self.x, self.y, self.x_speed, self.y_speed
-        )
+
+        x_change, y_change = GameMath.move_towards(x, y, self.x, self.y, self.x_speed, self.y_speed)
 
         self.move_x(x_change)
         self.move_y(y_change)
@@ -248,42 +253,22 @@ class Entity:
 
         self.move_towards(x, y)
 
-        if (
-            np.sqrt((self.x - x) ** 2 + (self.y - y) ** 2)
-            < (self.x_speed + self.y_speed) / 2
-        ):
+        if np.sqrt((self.x - x) ** 2 + (self.y - y) ** 2) < (self.x_speed + self.y_speed) / 2:
 
             self.random_target_point = None
 
 
 class WanderingEntity(Entity):
-    def __init__(
-        self,
-        sprite_sheet: dict[int, pygame.Surface],
-        name: str,
-        x: int = 0,
-        y: int = 0,
-        x_speed: int = 10,
-        y_speed: int = 10,
-        hitbox_width: int = 50,
-        hitbox_height: int = 50,
-        team: int = 0,
-    ) -> None:
-        super().__init__(
-            sprite_sheet,
-            "wandering " + name,
-            x,
-            y,
-            x_speed,
-            y_speed,
-            hitbox_width,
-            hitbox_height,
-            team,
-        )
-
     def perform_task(self):
 
-        self.random_wander()
+        # self.random_wander()
+        # print(np.sin(pygame.time.get_ticks()/1000)*0.05)
+        # self.move_towards(self.x + np.sin(pygame.time.get_ticks()/1000)*0.05, self.y)
+
+        self.move_direction_of_x(np.sin((self.alive_at + pygame.time.get_ticks()) / 1000) * 0.3)
+        self.move_direction_of_y(np.sin((self.alive_at + pygame.time.get_ticks()) / 1000) * 0.3)
+
+        # self.x += np.sin(pygame.time.get_ticks()) * 50
 
 
 class ShooterEntity(Entity):
@@ -301,7 +286,9 @@ class ShooterEntity(Entity):
         shoot_delay_ms: int = 4000,
         bullet_speed: int = 10,
         bullet_life_ms: int = 6000,
+        bullet_damage: int = 10,
         bullet_sprite: pygame.Surface = GA.Sprites.BULLET_1_SPRITE,
+        bullet_hp: int = 30,
     ) -> None:
 
         if bullet_sprite is None:
@@ -319,6 +306,8 @@ class ShooterEntity(Entity):
             team,
         )
 
+        self.bullet_hp = bullet_hp
+        self.bullet_damage = bullet_damage
         self.bullet_life = bullet_life_ms
         self.render_bullet_path = False
         self.bullets: list[EntityBullet] = []
@@ -327,16 +316,12 @@ class ShooterEntity(Entity):
         self.last_shoot_time = 0
         self.bullet_sprite = bullet_sprite
         self.bullet_clearout_interval = 30 * 1000
-        self.last_clear_bullet_time = (
-            pygame.time.get_ticks() + self.bullet_clearout_interval
-        )
+        self.last_clear_bullet_time = pygame.time.get_ticks() + self.bullet_clearout_interval
+        self.bullet_effect_renders: list[GameParticles.ParticleEffect] = []
 
     def shoot_bullet(self, target_x, target_y):
 
-        if (
-            self.last_shoot_time + self.shoot_delay > pygame.time.get_ticks()
-            or self.bullet_sprite is None
-        ):
+        if self.last_shoot_time + self.shoot_delay > pygame.time.get_ticks() or self.bullet_sprite is None:
             return
 
         bullet = EntityBullet(
@@ -349,7 +334,10 @@ class ShooterEntity(Entity):
             shoot_at_x=target_x,
             shoot_at_y=target_y,
             bullet_life_ms=self.bullet_life,
+            bullet_damage=self.bullet_damage,
         )
+
+        bullet.hp = self.bullet_hp
 
         bullet.draw_bullet_path = self.render_bullet_path
 
@@ -357,29 +345,30 @@ class ShooterEntity(Entity):
 
         self.last_shoot_time = pygame.time.get_ticks()
 
-    def get_bullet_collided_with(self, entity: Entity) -> 'EntityBullet':
+    def get_bullet_collided_with(self, entity: Entity) -> "EntityBullet":
 
         for bullet in self.bullets:
 
             if bullet.collides_with(entity):
-                return bullet 
+                return bullet
 
-        return None 
+        return None
 
     def bullets_collid_with(self, entity: Entity):
-        
+
         for bullet in self.bullets:
 
             if bullet.collides_with(entity):
-                return True 
+                return True
 
-        return False 
+        return False
 
     def render(self, GAME_WINDOW: pygame.Surface):
 
         super().render(GAME_WINDOW)
 
         for bullet in self.bullets:
+
             bullet.render(GAME_WINDOW)
 
     def perform_task(self):
@@ -389,10 +378,7 @@ class ShooterEntity(Entity):
         for bullet in self.bullets:
             bullet.perform_task()
 
-        if (
-            self.last_clear_bullet_time + self.bullet_clearout_interval
-            < pygame.time.get_ticks()
-        ):
+        if self.last_clear_bullet_time + self.bullet_clearout_interval < pygame.time.get_ticks():
 
             self.last_clear_bullet_time = pygame.time.get_ticks()
 
@@ -415,15 +401,13 @@ class EntityBullet(Entity):
         team: int = 0,
         shoot_at_x: int = 0,
         shoot_at_y: int = 0,
-        bullet_damage:int = 10,
+        bullet_damage: int = 10,
         bullet_life_ms: int = 4000,
     ) -> None:
 
-        self.damage = bullet_damage
         self.draw_bullet_path = False
         self.shoot_at_x = shoot_at_x
         self.shoot_at_y = shoot_at_y
-        self.alive_at = pygame.time.get_ticks()
         self.life = bullet_life_ms
         self.dir_x, self.dir_y = GameMath.get_normalized_vector(x, y, shoot_at_x, shoot_at_y)
 
@@ -437,8 +421,8 @@ class EntityBullet(Entity):
             hitbox_width,
             hitbox_height,
             team,
+            damage=bullet_damage,
         )
-
 
         if self.dynamic_hitbox:
             self.hitbox.width = self.width * 0.8
@@ -467,19 +451,18 @@ class EntityBullet(Entity):
                 GAME_WINDOW,
                 self.team_color,
                 (self.x, self.y),
-                (self.x + self.dir_x * self.x_speed, self.y + self.dir_y * self.y_speed)
+                (self.x + self.dir_x * self.x_speed, self.y + self.dir_y * self.y_speed),
             )
-    
 
     def perform_task(self):
 
         if self.is_dead:
             return
-        
+
         self.move_direction_of_x(self.dir_x)
         self.move_direction_of_y(self.dir_y)
 
-        if GameMath.is_rect_off_screen(self.hitbox):
+        if GameMath.is_rect_off_screen_extended(self.hitbox):
             self.kill()
 
 
@@ -508,6 +491,9 @@ class Player(ShooterEntity):
         )
 
     def handle_input(self, keys: Sequence[int]):
+
+        if self.is_dead:
+            return
 
         x_motion = 0
         y_motion = 0

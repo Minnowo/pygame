@@ -3,9 +3,7 @@ import pygame
 from . import GameConstants as GC
 
 
-def prepare_sprite_sheet(
-    sprite: pygame.Surface, scale_to: bool = None, flip: bool = False
-):
+def prepare_sprite_sheet(sprite: pygame.Surface, scale_to: bool = None, flip: bool = False):
 
     if scale_to:
 
@@ -29,25 +27,17 @@ def prepare_sprite_sheet(
 
     sheet[GC.MOTION_HORIZONTAL_RIGHT] = sprite
     # sheet['right'] = sprite
-    sheet[GC.MOTION_HORIZONTAL_RIGHT | GC.MOTION_VERTICAL_UP] = pygame.transform.rotate(
-        sprite, 15
-    )
+    sheet[GC.MOTION_HORIZONTAL_RIGHT | GC.MOTION_VERTICAL_UP] = pygame.transform.rotate(sprite, 15)
     # sheet['rightup'] = pygame.transform.rotate(sprite, 15)
-    sheet[
-        GC.MOTION_HORIZONTAL_RIGHT | GC.MOTION_VERTICAL_DOWN
-    ] = pygame.transform.rotate(sprite, -15)
+    sheet[GC.MOTION_HORIZONTAL_RIGHT | GC.MOTION_VERTICAL_DOWN] = pygame.transform.rotate(sprite, -15)
     # sheet['rightdown'] = pygame.transform.rotate(sprite, -15)
 
     sprite = pygame.transform.flip(sprite, True, False)
     sheet[GC.MOTION_HORIZONTAL_LEFT] = sprite
     # sheet['left'] = sprite
-    sheet[GC.MOTION_HORIZONTAL_LEFT | GC.MOTION_VERTICAL_UP] = pygame.transform.rotate(
-        sprite, -15
-    )
+    sheet[GC.MOTION_HORIZONTAL_LEFT | GC.MOTION_VERTICAL_UP] = pygame.transform.rotate(sprite, -15)
     # sheet['leftup'] = pygame.transform.rotate(sprite, -15)
-    sheet[
-        GC.MOTION_HORIZONTAL_LEFT | GC.MOTION_VERTICAL_DOWN
-    ] = pygame.transform.rotate(sprite, 15)
+    sheet[GC.MOTION_HORIZONTAL_LEFT | GC.MOTION_VERTICAL_DOWN] = pygame.transform.rotate(sprite, 15)
     # sheet['leftdown'] = pygame.transform.rotate(sprite, 15)
 
     return sheet
@@ -69,6 +59,7 @@ def get_team_color(team: int):
 
 class Colors:
 
+    BLACK = (0, 0, 0)
     WHITE = (255, 255, 255)
     RED = (255, 0, 0)
     GREEN = (0, 255, 0)
@@ -95,22 +86,21 @@ class Sprites:
     @staticmethod
     def init():
 
-        Sprites.BACKGROUND1_SPRITE = pygame.image.load("./assets/background.png")
+        # .convert() for more performance, requires that pygame.display.set_mode(( has been called
+        Sprites.BACKGROUND1_SPRITE = pygame.image.load("./assets/background.png").convert_alpha()
         Sprites.BACKGROUND1_RECT = Sprites.BACKGROUND1_SPRITE.get_rect()
 
-        Sprites.PLAYER_SPRITE_SHEET = prepare_sprite_sheet(
-            pygame.image.load("./assets/worm1.png")
-        )
+        Sprites.PLAYER_SPRITE_SHEET = prepare_sprite_sheet(pygame.image.load("./assets/worm1.png").convert_alpha())
 
         Sprites.SEXY_SPRITE_SHEET = prepare_sprite_sheet(
-            pygame.image.load("./assets/sexyworm.png"), scale_to=(87, 223)
+            pygame.image.load("./assets/sexyworm.png").convert_alpha(), scale_to=(87, 223)
         )
 
         Sprites.WATA_SPRITE_SHEET = prepare_sprite_sheet(
-            pygame.image.load("./assets/watamelon1.png"), scale_to=(150, 135), flip=True
+            pygame.image.load("./assets/watamelon1.png").convert_alpha(), scale_to=(150, 135), flip=True
         )
 
-        Sprites.BULLET_1_SPRITE = pygame.image.load("./assets/rock.png")
+        Sprites.BULLET_1_SPRITE = pygame.image.load("./assets/rock.png").convert_alpha()
 
 
 class Fonts:

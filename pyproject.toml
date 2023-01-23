@@ -1,0 +1,15 @@
+
+[project]
+dynamic = ["version", "description"]
+name = "pygame"
+authors = [{name = "Minnowo"}]
+license = { file = "LICENSE" } 
+classifiers = []
+requires-python = ">=3.7.6"
+dependencies = [
+    "pygame >= 2.1.2",
+    "numpy >= 1.21.6",
+]
+
+[tool.black]
+line-length = 128

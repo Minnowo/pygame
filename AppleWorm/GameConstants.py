@@ -1,10 +1,11 @@
 import pygame
-
+import math
 
 WIDTH = 1324
 HEIGHT = 1000
 
 SCREEN_RECT = pygame.Rect(0, 0, WIDTH, HEIGHT)
+SCREEN_RECT_EXTENDED = pygame.Rect(-250, -250, WIDTH + 250, HEIGHT + 250)
 
 MOTION_NONE = 0
 # these values are used to denote movement in a direction
@@ -24,3 +25,8 @@ Y_MOTION_MASK = 0b_1100
 PLAYER_TEAM = 1
 ENEMY_TEAM = 2
 NEUTRAL_TEAM = 3
+
+
+DEGREE_90_RAD = math.radians(90)
+DEGREE_180_RAD = math.radians(180)
+DEGREE_270_RAD = math.radians(270)
