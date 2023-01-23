@@ -1,4 +1,3 @@
-
 import pygame
 import numpy.random as random
 
