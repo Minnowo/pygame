@@ -1,5 +1,5 @@
 import pygame
-
+import numpy.random as random
 from . import GameConstants as GC
 
 
@@ -68,6 +68,10 @@ class Colors:
     TEAM_1 = GREEN
     TEAM_2 = RED
     TEAM_3 = BLUE
+
+    @staticmethod
+    def random_color():
+        return (random.randint(0, 256), random.randint(0, 256), random.randint(0, 256))
 
 
 class Sprites:

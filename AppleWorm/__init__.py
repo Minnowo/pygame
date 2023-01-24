@@ -4,6 +4,8 @@ import random
 import math
 import os
 from typing import Sequence, Tuple
+import timeit
+import numpy as np
 
 from . import GameEntities
 from . import GameMath
@@ -23,14 +25,6 @@ def set_dpi_aware():
             success = ctypes.windll.user32.SetProcessDPIAware()
         except:
             pass
-
-
-def game_loop_menu():
-    pass
-
-
-def game_loop_gameplay():
-    pass
 
 
 def delay(func, *, delay=400, delay_map={}):
@@ -73,13 +67,6 @@ def spawn_circle(list):
     list.create_particle()
 
 
-def advance(loc, angle, amt):
-    new_loc = loc.copy()
-    new_loc[0] += math.cos(math.radians(angle)) * amt
-    new_loc[1] += math.sin(math.radians(angle)) * amt
-    return new_loc
-
-
 def create_enemy_death_explosion(circle_effect: GameParticles.ExpandingCircle, x: int, y: int):
 
     circle_effect.create_particle(x=x, y=y, decay_rate=1, radius=10, expand_rate=20, expand_rate_change=0.15, line_width=5)
@@ -104,79 +91,16 @@ def create_player_death_explosion(
     )
 
 
-display = pygame.Surface((300, 200))
-display_bg = (255, 255, 255)  # (20, 19, 39)
+def clamp(value, min, max):
 
+    if value < min:
+        return min
 
-def render_side_fog(GAME_WINDOW, game_time):
+    if value > max:
+        return max
 
-    w, h = display.get_width(), display.get_height()
+    return value
 
-    # spans the entire width, and 33% of the height
-    effect_1_percent = 0.33
-    effect1_width, effect1_height = w, h * effect_1_percent
-    effect1_color1 = (15, 10, 24)
-    effect1_color2 = (0, 0, 0)
-    var1 = effect1_height / 4
-
-    # spans the entire width, and 12.5% of the height
-    effect_2_percent = 0.125
-    effect_2_percent *= 2
-    effect2_width, effect2_height = w, h * effect_2_percent
-    effect2_color1 = (0, 0, 0)
-    effect2_color2 = (0, 2, 4)
-    var2 = effect2_height / 2
-
-    # clear old effects and set background
-    display.fill(display_bg)
-
-    # effect 1
-
-    b2_points = (
-        ((effect1_width, var1),)
-        + tuple(
-            (
-                effect1_width - (effect1_width / 30 * (i + 1) + math.sin((game_time + i * 120) / 10) * 8),
-                3 * (var1 + math.sin((game_time + i * 10) / 10) * 4),
-            )
-            for i in range(29)
-        )
-        + ((0, var1), (0, 0), (w, 0))
-    )
-    back_surf = pygame.Surface((effect1_width, effect1_height))
-    pygame.draw.polygon(back_surf, effect1_color1, b2_points)
-    back_surf.set_colorkey(effect1_color2)
-    display.blit(back_surf, (0, 0))
-    display.blit(pygame.transform.flip(back_surf, False, True), (0, h - effect1_height))
-
-    # effect 2
-    b_points = (
-        ((0, var2),)
-        + tuple(
-            (w / 30 * (i + 1) + math.sin((game_time + i * 120) / 4) * 8, var2 + math.sin((game_time + i * 10) / 10) * 4)
-            for i in range(29)
-        )
-        + ((w, var2), (w, 0), (0, 0))
-    )
-
-    fog_surf = pygame.Surface((effect2_width, effect2_height))
-    pygame.draw.polygon(fog_surf, effect2_color2, b_points)
-    fog_surf.set_alpha(150)
-    fog_surf.set_colorkey(effect2_color1)
-
-    display.blit(pygame.transform.flip(fog_surf, True, False), (0, -6))
-    display.blit(fog_surf, (0, 0))
-    display.blit(pygame.transform.flip(fog_surf, True, True), (0, h - effect2_height + 6))
-    display.blit(pygame.transform.flip(fog_surf, False, True), (0, h - effect2_height))
-
-    side_fog = pygame.transform.scale(pygame.transform.rotate(fog_surf, 90), (effect2_height, h))
-    display.blit(pygame.transform.flip(side_fog, False, True), (-6, 0))
-    display.blit(side_fog, (0, 0))
-    display.blit(pygame.transform.flip(side_fog, True, True), (w - effect2_height, 0))
-    display.blit(pygame.transform.flip(side_fog, True, False), (w - effect2_height + 6, 0))
-
-    # actually render the effect to the game window
-    GAME_WINDOW.blit(pygame.transform.scale(display, GAME_WINDOW.get_size()), (0, 0))
 
 
 def main():
@@ -191,6 +115,7 @@ def main():
 
     GA.Fonts.init()
     GA.Sprites.init()
+    block1 = pygame.image.load("./assets/blocks/small.png").convert_alpha()
 
     player = GameEntities.Player(GA.Sprites.SEXY_SPRITE_SHEET, 0, 0, 20, 20)
     player.set_hitbox_dynamic(True)
@@ -198,27 +123,29 @@ def main():
     player.shoot_delay = 200
     player.render_bullet_path = True
     player.bullet_speed = 70
-    player.bullet_life = 500
+    player.bullet_life = 200
     player.bullet_damage = 40
     player.bullet_hp = 10000000
 
-    FRAME_RATE = 24
+    FRAME_RATE = 60
+    game_time = 0
 
     time_increment = 500
     time_until_new_enemy = time_increment
 
     last_dead_clearout_interval = 30 * 1000
     last_dead_clearout = 0
+    mouse_down = False
 
-    entities: Sequence[GameEntities.Entity] = [get_enemy(False, 50 + i * 200, 500, skip=True) for i in range(5)]
+    entities: Sequence[GameEntities.Entity] = []  # [get_enemy(False, 50 + i * 200, 500, skip=True) for i in range(5)]
 
     clock = pygame.time.Clock()
 
     square_effect = GameParticles.FallingSquareEffect(GA.Colors.BLACK)
     circle_effect = GameParticles.ExpandingCircle(GA.Colors.WHITE)
-    player.bullet_effect_renders.append(circle_effect)
+    border_fog = GameParticles.BorderFog()
 
-    game_time = 0
+    curve = GameEntities.BezierCurve(20, (50, 50), 4, 0.05)
 
     play_game = True
     while play_game:
@@ -236,6 +163,11 @@ def main():
             if event.type == pygame.QUIT:
                 play_game = False
 
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_down = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mouse_down = False
+
         if last_dead_clearout + last_dead_clearout_interval < game_ticks:
 
             last_dead_clearout = game_ticks
@@ -245,44 +177,63 @@ def main():
 
             print(f"Cleared out dead entities: {_ - len(entities)}")
 
-        text = GA.Fonts.FONT_CONSOLAS.render(f"Objective: Survive {game_ticks//1000} HP: {player.hp}", True, (255, 255, 255))
+        particle_count = len(square_effect.particles) + len(circle_effect.particles)
+        hud_str = f"FPS: {clock.get_fps():.0f} HP: {player.hp} Particles: {particle_count}"
+        text = GA.Fonts.FONT_CONSOLAS.render(hud_str, True, (255, 255, 255))
         text_rect = text.get_rect(x=0, y=0)
 
-        GAME_WINDOW.blit(GA.Sprites.BACKGROUND1_SPRITE, GA.Sprites.BACKGROUND1_RECT)
+        GAME_WINDOW.fill((0, 0, 0))
+        # GAME_WINDOW.blit(block1, block1.get_rect())
+        # GAME_WINDOW.blit(GA.Sprites.BACKGROUND1_SPRITE, GA.Sprites.BACKGROUND1_RECT)
+        # pygame.draw.polygon(GAME_WINDOW, (255, 255, 255), curve1)
 
-        render_side_fog(GAME_WINDOW, game_time)
+        # border_fog.update()
+        # border_fog.render(GAME_WINDOW)
 
-        square_effect.create_particle_on_chance(0.6)
-        square_effect.render(GAME_WINDOW)
+        # square_effect.create_particle_on_chance(1/50)
+        # square_effect.render(GAME_WINDOW)
 
-        GAME_WINDOW.blit(text, text_rect)
+        # GAME_WINDOW.blit(text, text_rect)
 
-        if keys[pygame.K_g]:
-            e = get_enemy(True, *pygame.mouse.get_pos())
-            if e:
-                entities.append(e)
+        # block(GAME_WINDOW)
 
-        if keys[pygame.K_h]:
-            e = get_enemy(False, *pygame.mouse.get_pos())
-            if e:
-                entities.append(e)
+        curve.render(GAME_WINDOW)
 
-        if keys[pygame.K_k]:
-            spawn_circle(circle_effect)
+        if mouse_down:
+            
+            curve.start_drag(pygame.mouse.get_pos())
 
-        if keys[pygame.K_l]:
-            create_player_death_explosion(circle_effect, square_effect, player)
-        if keys[pygame.K_m]:
+        else:
 
-            mousex, mousey = pygame.mouse.get_pos()
+            curve.stop_drag()
+            dragging = False 
 
-            circle_effect.create_particle(
-                x=mousex, y=mousey, radius=4, line_width=4, decay_rate=0.2, expand_rate=4, expand_rate_change=0.3
-            )
+        # if keys[pygame.K_g]:
+        #     e = get_enemy(True, *pygame.mouse.get_pos())
+        #     if e:
+        #         entities.append(e)
 
-        player.handle_input(keys)
-        player.perform_task()
-        player.render(GAME_WINDOW)
+        # if keys[pygame.K_h]:
+        #     e = get_enemy(False, *pygame.mouse.get_pos())
+        #     if e:
+        #         entities.append(e)
+
+        # if keys[pygame.K_k]:
+        #     spawn_circle(circle_effect)
+
+        # if keys[pygame.K_l]:
+        #     create_player_death_explosion(circle_effect, square_effect, player)
+        # if keys[pygame.K_m]:
+
+        #     mousex, mousey = pygame.mouse.get_pos()
+
+        #     circle_effect.create_particle(
+        #         x=mousex, y=mousey, radius=4, line_width=4, decay_rate=0.2, expand_rate=4, expand_rate_change=0.3
+        #     )
+
+        # player.handle_input(keys)
+        # player.perform_task()
+        # player.render(GAME_WINDOW)
 
         for entity in filter(GameEntities.Entity.entity_is_not_dead, entities):
 
@@ -320,4 +271,4 @@ def main():
 
                     create_player_death_explosion(circle_effect, square_effect, player)
 
-        circle_effect.render(GAME_WINDOW)
+        # circle_effect.render(GAME_WINDOW)
