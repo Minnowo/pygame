@@ -115,7 +115,6 @@ def main():
 
     GA.Fonts.init()
     GA.Sprites.init()
-    block1 = pygame.image.load("./assets/blocks/small.png").convert_alpha()
 
     player = GameEntities.Player(GA.Sprites.SEXY_SPRITE_SHEET, 0, 0, 20, 20)
     player.set_hitbox_dynamic(True)
@@ -144,8 +143,6 @@ def main():
     square_effect = GameParticles.FallingSquareEffect(GA.Colors.BLACK)
     circle_effect = GameParticles.ExpandingCircle(GA.Colors.WHITE)
     border_fog = GameParticles.BorderFog()
-
-    curve = GameEntities.BezierCurve(20, (50, 50), 4, 0.05)
 
     play_game = True
     while play_game:
@@ -183,30 +180,16 @@ def main():
         text_rect = text.get_rect(x=0, y=0)
 
         GAME_WINDOW.fill((0, 0, 0))
-        # GAME_WINDOW.blit(block1, block1.get_rect())
-        # GAME_WINDOW.blit(GA.Sprites.BACKGROUND1_SPRITE, GA.Sprites.BACKGROUND1_RECT)
-        # pygame.draw.polygon(GAME_WINDOW, (255, 255, 255), curve1)
+        GAME_WINDOW.blit(GA.Sprites.BACKGROUND1_SPRITE, GA.Sprites.BACKGROUND1_RECT)
 
-        # border_fog.update()
-        # border_fog.render(GAME_WINDOW)
+        border_fog.update()
+        border_fog.render(GAME_WINDOW)
 
-        # square_effect.create_particle_on_chance(1/50)
-        # square_effect.render(GAME_WINDOW)
+        square_effect.create_particle_on_chance(1/50)
+        square_effect.render(GAME_WINDOW)
 
-        # GAME_WINDOW.blit(text, text_rect)
+        GAME_WINDOW.blit(text, text_rect)
 
-        # block(GAME_WINDOW)
-
-        curve.render(GAME_WINDOW)
-
-        if mouse_down:
-            
-            curve.start_drag(pygame.mouse.get_pos())
-
-        else:
-
-            curve.stop_drag()
-            dragging = False 
 
         # if keys[pygame.K_g]:
         #     e = get_enemy(True, *pygame.mouse.get_pos())
@@ -231,9 +214,9 @@ def main():
         #         x=mousex, y=mousey, radius=4, line_width=4, decay_rate=0.2, expand_rate=4, expand_rate_change=0.3
         #     )
 
-        # player.handle_input(keys)
-        # player.perform_task()
-        # player.render(GAME_WINDOW)
+        player.handle_input(keys)
+        player.perform_task()
+        player.render(GAME_WINDOW)
 
         for entity in filter(GameEntities.Entity.entity_is_not_dead, entities):
 
@@ -271,4 +254,4 @@ def main():
 
                     create_player_death_explosion(circle_effect, square_effect, player)
 
-        # circle_effect.render(GAME_WINDOW)
+        circle_effect.render(GAME_WINDOW)

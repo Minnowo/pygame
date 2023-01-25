@@ -64,35 +64,3 @@ def invert_color(color: tuple[int, int, int]):
 
     return (255 - color[0], 255 - color[1], 255 - color[2])
 
-
-class LinearBezierCurve:
-    """
-    Implements a linear bezier curve
-
-    https://en.wikipedia.org/wiki/B%C3%A9zier_curve
-
-    """
-
-    @staticmethod
-    def interpolate_points(t: float, p0: npt.NDArray, p1: npt.NDArray):
-
-        return (1 - t) * p0 + t * p1
-
-    @staticmethod
-    def curve(t_points: npt.NDArray, points: npt.NDArray):
-
-        curve = np.zeros((len(t_points), 2))
-
-        for i, t in enumerate(t_points):
-
-            new_points = points
-            while len(new_points) > 1:
-
-                new_points = tuple(
-                    LinearBezierCurve.interpolate_points(t, new_points[k], new_points[k + 1])
-                    for k in range(len(new_points) - 1)
-                )
-
-            curve[i] = new_points[0]
-
-        return curve
